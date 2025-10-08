@@ -1,4 +1,6 @@
 from .bene_portal_schemas import (
+    ProgramFormRequest,
+    ProgramFormResponse,
     Registry,
     RegistryAction,
     RegistryActions,

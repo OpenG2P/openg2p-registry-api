@@ -73,3 +73,24 @@ class RegistryActionsResponseBody(G2PResponseBody):
 
 class RegistryActionsResponse(G2PResponse):
     response_body: RegistryActionsResponseBody
+
+
+class ProgramFormRequestPayload(BaseModel):
+    formio_id: str
+
+
+class ProgramFormRequestBody(G2PRequestBody):
+    request_payload: ProgramFormRequestPayload
+
+
+class ProgramFormRequest(G2PRequest):
+    request_header: G2PRequestHeader
+    request_body: ProgramFormRequestBody
+
+
+class ProgramFormResponseBody(G2PResponseBody):
+    response_payload: dict
+
+
+class ProgramFormResponse(G2PResponse):
+    response_body: ProgramFormResponseBody
