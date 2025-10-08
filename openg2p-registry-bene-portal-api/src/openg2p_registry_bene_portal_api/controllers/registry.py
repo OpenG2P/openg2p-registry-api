@@ -74,7 +74,6 @@ class RegistryController(BaseController):
                     code="AUTH001", message="Authentication credentials are missing"
                 )
             beneficiary_id = auth_credentials.sub
-            beneficiary_id = 1
             _logger.info("Fetching registries for Beneficiary ID: %s", beneficiary_id)
             registry_response: RegistryResponse = (
                 await self.registry_service.get_my_registries(

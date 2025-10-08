@@ -8,7 +8,11 @@ from openg2p_fastapi_common.schemas import (
 )
 from openg2p_fastapi_common.service import BaseService
 from openg2p_registry_models.errors import RegistryErrorCodes, RegistryException
-from openg2p_registry_models.models import G2PRegistryAction, G2PRegistyType
+from openg2p_registry_models.models import (
+    FormIOBuilder,
+    G2PRegistryAction,
+    G2PRegistyType,
+)
 from openg2p_registry_models.schemas.bene_portal_schemas import (
     ProgramFormRequest,
     ProgramFormResponse,
@@ -358,6 +362,20 @@ class RegistryService(BaseService):
 
             _logger.info(f"Fetching actions for registry_id: {registry_unique_id}")
 
+            pagination = (
+                registry_request.request_body.pagination_request
+                if registry_request.request_body
+                else None
+            )
+
+            page_size = pagination.page_size if pagination else 10
+            current_page = pagination.current_page if pagination else 1
+            offset = (current_page - 1) * page_size
+
+            _logger.debug(
+                f"Pagination params - page_size: {page_size}, current_page: {current_page}, offset: {offset}"
+            )
+
             async with self.registry_session() as session:
                 registry_result = await session.execute(
                     select(G2PRegistyType).where(
@@ -379,15 +397,30 @@ class RegistryService(BaseService):
                     f"Found registry: {registry_model.registry_name}, fetching associated actions"
                 )
 
-                actions_result = await session.execute(
-                    select(G2PRegistryAction).where(
+                # Get total count of actions
+                total_count_result = await session.execute(
+                    select(func.count(G2PRegistryAction.id)).where(
                         G2PRegistryAction.registry_type_id == registry_model.id
                     )
+                )
+                total_count = total_count_result.scalar()
+                total_pages = (total_count + page_size - 1) // page_size
+
+                _logger.debug(
+                    f"Total actions: {total_count}, total pages: {total_pages}"
+                )
+
+                # Get paginated actions
+                actions_result = await session.execute(
+                    select(G2PRegistryAction)
+                    .where(G2PRegistryAction.registry_type_id == registry_model.id)
+                    .offset(offset)
+                    .limit(page_size)
                 )
                 action_models = actions_result.scalars().all()
 
                 _logger.info(
-                    f"Found {len(action_models)} actions for registry {registry_model.registry_name}"
+                    f"Found {len(action_models)} actions for registry {registry_model.registry_name} (page {current_page}/{total_pages})"
                 )
 
                 actions_payload = [
@@ -405,6 +438,13 @@ class RegistryService(BaseService):
                     registry_id=registry_model.id, registry_actions=actions_payload
                 )
 
+            pagination_response = None
+            if total_count > 0 or total_pages > 0:
+                pagination_response = {
+                    "number_of_items": total_count,
+                    "number_of_pages": total_pages,
+                }
+
             return RegistryActionsResponse(
                 response_header=G2PResponseHeader(
                     request_id=registry_request.request_header.request_id,
@@ -412,7 +452,8 @@ class RegistryService(BaseService):
                     response_timestamp=datetime.utcnow(),
                 ),
                 response_body=RegistryActionsResponseBody(
-                    response_payload=actions_wrapper
+                    response_payload=actions_wrapper,
+                    pagination_response=pagination_response,
                 ),
             )
         except RegistryException as re:
@@ -437,58 +478,43 @@ class RegistryService(BaseService):
         self, program_form_request: ProgramFormRequest
     ) -> ProgramFormResponse:
         """
-        Retrieve program form schema by formio_id.
-        Returns the form configuration needed for rendering/submission.
+        Retrieve program form schema by formio_uuid using FormIOBuilder.
         """
         try:
-            formio_id = (
-                program_form_request.request_body.request_payload.formio_id
+            formio_uuid = (
+                program_form_request.request_body.request_payload.formio_uuid
                 if program_form_request.request_body
                 and program_form_request.request_body.request_payload
                 else None
             )
 
-            if not formio_id:
-                _logger.warning("Program form request missing formio_id")
+            if not formio_uuid:
+                _logger.warning("Program form request missing formio_uuid")
                 raise RegistryException(
                     code=RegistryErrorCodes.INVALID_REQUEST,
-                    message="formio_id is required",
+                    message="formio_uuid is required",
                 )
 
-            _logger.info(f"Fetching program form for formio_id: {formio_id}")
+            _logger.info(f"Fetching program form for formio_uuid: {formio_uuid}")
 
             async with self.registry_session() as session:
-                actions_result = await session.execute(
-                    select(G2PRegistryAction).where(
-                        G2PRegistryAction.formio_uuid == formio_id
-                    )
+                result = await session.execute(
+                    select(FormIOBuilder).where(FormIOBuilder.uuid == formio_uuid)
                 )
-                action_models = actions_result.scalars().all()
+                form_model = result.scalar_one_or_none()
 
-                if not action_models:
+                if not form_model:
                     _logger.warning(
-                        f"Program form not found for formio_id: {formio_id}"
+                        f"Program form not found for formio_uuid: {formio_uuid}"
                     )
                     raise RegistryException(
                         code=RegistryErrorCodes.REGISTRY_NOT_FOUND,
-                        message=f"Program form not found for formio_id: {formio_id}",
+                        message=f"Program form not found for formio_uuid: {formio_uuid}",
                     )
 
-                _logger.info(
-                    f"Found {len(action_models)} program form(s) for formio_id: {formio_id}"
-                )
-
-                actions_payload = [
-                    {
-                        "registry_id": action.registry_type_id,
-                        "form_schema": action.formio_schema,
-                    }
-                    for action in action_models
-                ]
-
                 wrapper = {
-                    "registry_id": actions_payload[0]["registry_id"],
-                    "registry_actions": actions_payload,
+                    "form_id": form_model.id,
+                    "form_schema": form_model.schema,
                 }
 
             return ProgramFormResponse(
@@ -499,6 +525,7 @@ class RegistryService(BaseService):
                 ),
                 response_body=ProgramFormResponseBody(response_payload=wrapper),
             )
+
         except RegistryException as re:
             _logger.error(
                 f"RegistryException while fetching program form: {re.message} (code: {re.code})"

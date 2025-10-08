@@ -76,7 +76,7 @@ class RegistryActionsResponse(G2PResponse):
 
 
 class ProgramFormRequestPayload(BaseModel):
-    formio_id: str
+    formio_uuid: str
 
 
 class ProgramFormRequestBody(G2PRequestBody):
