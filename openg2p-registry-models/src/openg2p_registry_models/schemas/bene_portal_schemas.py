@@ -19,21 +19,21 @@ class Registry(BaseModel):
     registry_creation_date: date
     registry_last_updation_date: Optional[date] = None
     registry_details: str
+    registry_model_name: str
+    domain: str
 
 
 class RegistryAction(BaseModel):
     id: int
     registry_id: int
     action_name: str
+    form_uuid: str
     form_schema: str
 
 
 class RegistryActions(BaseModel):
     registry_id: int
     registry_actions: List[RegistryAction]
-
-
-# Registry Request
 
 
 class RegistryRequestPayload(BaseModel):
@@ -55,12 +55,12 @@ class RegistryResponseBody(G2PResponseBody):
     response_payload: List[Registry]
 
 
-class RegistryResponseDetailResponseBody(G2PResponseBody):
-    response_payload: Optional[Registry] = None
-
-
 class RegistryResponse(G2PResponse):
     response_body: RegistryResponseBody
+
+
+class RegistryResponseDetailResponseBody(G2PResponseBody):
+    response_payload: Optional[Registry] = None
 
 
 class RegistryResponseDetailResponse(G2PResponse):

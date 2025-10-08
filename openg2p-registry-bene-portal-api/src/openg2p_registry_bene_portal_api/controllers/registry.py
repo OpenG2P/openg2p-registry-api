@@ -6,12 +6,12 @@ from openg2p_fastapi_auth.beneficiary_token import BeneficiaryToken
 from openg2p_fastapi_auth.models.credentials import AuthCredentials
 from openg2p_fastapi_common.controller import BaseController
 from openg2p_registry_models.errors import RegistryException
+from openg2p_registry_models.schemas import (
+    RegistryResponseDetailResponse as RegistryDetailResponse,
+)
 from openg2p_registry_models.schemas.bene_portal_schemas import (
     RegistryRequest,
     RegistryResponse,
-)
-from openg2p_registry_models.schemas import (
-    RegistryResponseDetailResponse as RegistryDetailResponse,
 )
 
 from ..config import Settings
@@ -26,7 +26,7 @@ class RegistryController(BaseController):
         super().__init__(**kwargs)
 
         self.router.tags += ["Registry Bene Portal - Registry"]
-        self.registry_service = RegistryService()
+        self.registry_service = RegistryService.get_component()
         self.router.prefix = "/registry"
 
         self.router.add_api_route(
@@ -55,8 +55,13 @@ class RegistryController(BaseController):
     ) -> RegistryResponse:
         _logger.debug("Get My Registries Request: %s", registry_request)
         try:
+            if not auth_credentials:
+                _logger.error("Authentication credentials are missing")
+                raise RegistryException(
+                    code="AUTH001", message="Authentication credentials are missing"
+                )
             beneficiary_id = auth_credentials.sub
-            
+            _logger.info("Fetching registries for Beneficiary ID: %s", beneficiary_id)
             registry_response: RegistryResponse = (
                 await self.registry_service.get_my_registries(
                     beneficiary_id, registry_request

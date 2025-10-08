@@ -8,7 +8,7 @@ from openg2p_fastapi_common.schemas import (
 )
 from openg2p_fastapi_common.service import BaseService
 from openg2p_registry_models.errors import RegistryErrorCodes, RegistryException
-from openg2p_registry_models.models import G2PRegistryModel, IrModel
+from openg2p_registry_models.models import G2PRegistyType
 from openg2p_registry_models.schemas.bene_portal_schemas import (
     Registry,
     RegistryRequest,
@@ -54,8 +54,8 @@ class RegistryService(BaseService):
 
             async with self.registry_session() as session:
                 registry_result = await session.execute(
-                    select(G2PRegistryModel).where(
-                        G2PRegistryModel.registry_unique_id == registry_id
+                    select(G2PRegistyType).where(
+                        G2PRegistyType.registry_unique_id == registry_id
                     )
                 )
                 registry_models = registry_result.scalars().all()

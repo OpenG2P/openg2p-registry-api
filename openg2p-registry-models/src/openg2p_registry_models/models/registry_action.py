@@ -1,5 +1,6 @@
-from sqlalchemy import Integer, String, JSON, ForeignKey
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import mapped_column
+
 from .base import BaseORMModel
 
 
@@ -8,16 +9,9 @@ class G2PRegistryAction(BaseORMModel):
 
     id = mapped_column(Integer, primary_key=True, autoincrement=True)
     action_name = mapped_column(String, nullable=False)
-    formio_schema = mapped_column(JSON, nullable=True)
-    action_submission_url = mapped_column(String, nullable=True)
-
-    registry_model_id = mapped_column(
-        Integer,
-        ForeignKey("ir_model.id"),
-        nullable=True,
+    registry_type_id = mapped_column(
+        Integer, ForeignKey("g2p_registry_type.id"), nullable=False
     )
-    form_builder_id = mapped_column(
-        Integer,
-        ForeignKey("formio_builder.id"),
-        nullable=True,
-    )
+    formio_uuid = mapped_column(String)
+    formio_schema = mapped_column(Text)
+    action_submission_url = mapped_column(String)
