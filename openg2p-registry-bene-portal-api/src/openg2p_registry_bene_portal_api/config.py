@@ -1,10 +1,10 @@
-from openg2p_fastapi_common.config import Settings
+from openg2p_fastapi_common.config import Settings as BaseSettings
 from pydantic_settings import SettingsConfigDict
 
 from . import __version__
 
 
-class Settings(Settings):
+class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="registry_bene_portal_api_", env_file=".env", extra="allow"
     )

@@ -1,19 +1,19 @@
 # ruff: noqa: E402
+import logging
+
+from openg2p_fastapi_common.app import Initializer as BaseInitializer
 
 from .config import Settings
-
-_config = Settings.get_config()
-
-from openg2p_fastapi_common.app import Initializer
-
 from .controllers import RegistryController
 from .services import RegistryService
 
+_config = Settings.get_config()
+_logger = logging.getLogger(_config.logging_default_logger_name)
 
-class Initializer(Initializer):
+
+class Initializer(BaseInitializer):
     def initialize(self, **kwargs):
         super().initialize()
-        # Initialize all Services, Controllers, any utils here.
 
-        RegistryController().post_init()
         RegistryService()
+        RegistryController().post_init()

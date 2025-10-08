@@ -1,5 +1,4 @@
 from .base import BaseORMModel
-from .ir_model import IrModel
 from .registry_action import G2PRegistryAction
-from .registry_model import G2PRegistryModel
+from .registry_type import G2PRegistyType
 from .res_partner import ResPartner
